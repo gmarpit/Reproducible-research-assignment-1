@@ -1,0 +1,93 @@
+---
+title: "Reproducible research Assignment 1"
+output: html_document
+---
+
+Reading Data
+
+```{r,echo=TRUE}
+activity<-read.csv(file.choose())
+activity$date <- as.Date(activity$date, format = "%Y-%m-%d")
+```
+
+What is mean total number of steps taken per day?
+```{r, echo=TRUE}
+steps_per_day <- aggregate(steps ~ date, activity, sum)
+head(steps_per_day)
+hist(tapply(activity$steps, activity$date, sum), xlab = "Total daily steps", breaks = 20, 
+          main = "Total of steps taken per day")
+
+steps_mean   <- mean(steps_per_day$steps, na.rm=TRUE)
+head(steps_mean)
+steps_median <- median(steps_per_day$steps, na.rm=TRUE)
+head(steps_median)
+```
+
+What is the average daily activity pattern?
+```{r, echo=TRUE}
+steps_per_interval <- aggregate(steps ~ interval,activity,mean, na.rm=TRUE)
+plot(steps_per_interval,type="l")
+
+steps_per_interval[which.max(steps_per_interval$steps),]
+
+```
+
+
+Imputing missing values
+```{r, echo=TRUE}
+sum(is.na(activity$steps))
+
+na_fill <- function(data, pervalue) {
+  na_index <- which(is.na(activity$steps))
+  na_replace <- unlist(lapply(na_index, FUN=function(idx){
+    interval = activity[idx,]$interval
+    steps_per_interval[steps_per_interval$interval == interval,]$steps
+  }))
+  fill_steps <- activity$steps
+  fill_steps[na_index] <- na_replace
+  fill_steps
+}
+
+activity_fill <- data.frame(  
+  steps = na_fill(activity, steps_per_interval),  
+  date = activity$date,  
+  interval = activity$interval)
+
+hist(tapply(activity_fill$steps, activity_fill$date, sum), xlab = "Total daily steps", breaks = 20, main = "Total of steps taken per day")
+
+steps_per_day_v1 <- aggregate(steps ~ date, activity_fill, sum)
+steps_mean_v1   <- mean(steps_per_day_v1$steps, na.rm=TRUE)
+head(steps_mean_v1)
+steps_median_v1 <- median(steps_per_day_v1$steps, na.rm=TRUE)
+head(steps_median_v1)
+
+```
+Are there differences in activity patterns between weekdays and weekends?
+
+```{r, echo=TRUE}
+
+activity_fill$Day<-NA
+
+nrow<-nrow(activity_fill)
+nrow<-nrow(activity_fill)
+for(i in 1:nrow){
+if(weekdays(activity_fill[i,]$date)=="Saturday") {
+  activity_fill[i,]$Day<-"Weekend"
+  } else {
+      if(weekdays(activity_fill[i,]$date)=="Sunday") {
+      activity_fill[i,]$Day<-"Weekend"
+    } else {activity_fill[i,]$Day<-"Weekday" }
+  }
+}
+
+steps_per_interval_v1 <- aggregate(activity_fill$steps,list(activity_fill$interval,activity_fill$Day,activity_fill$),mean, na.rm=TRUE)
+colnames(steps_per_interval_v1)<-c("interval","Day","steps")
+
+Weekday<-subset(steps_per_interval_v1,Day=="Weekday")
+Weekend<-subset(steps_per_interval_v1,Day=="Weekend")
+
+par(mfrow=c(1,2))
+plot1<-plot(Weekday$interval,Weekday$steps,type="l")
+plot2<-plot(Weekend$interval,Weekend$steps,type="l")
+
+```
